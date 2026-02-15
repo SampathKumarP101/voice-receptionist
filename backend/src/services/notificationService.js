@@ -1,90 +1,78 @@
 /**
- * Notification Service (Exotel)
- * Sends SMS via Exotel
+ * Notification Service
+ * Handles sending WhatsApp confirmations and reminders
  */
 
-const { exotelClient, exotelPhone } = require('../config/exotel');
-const querystring = require('querystring');
+const whatsappService = require('./whatsappService');
 
 class NotificationService {
   /**
-   * Send SMS via Exotel
+   * Send appointment confirmation via WhatsApp
    */
-  async sendSMS(to, message) {
-    if (!exotelClient) {
-      console.warn('Exotel not configured. SMS not sent.');
-      return { success: false, reason: 'exotel_not_configured' };
-    }
-
+  async sendAppointmentConfirmation(appointment, clinic, language = 'en') {
     try {
-      const data = querystring.stringify({
-        From: exotelPhone,
-        To: to,
-        Body: message
-      });
+      const params = [
+        appointment.patient_name,
+        appointment.id.substring(0, 8),
+        'General Consultation',
+        appointment.appointment_date,
+        appointment.appointment_time
+      ];
 
-      const response = await exotelClient.post('/Sms/send', data);
+      await whatsappService.sendConfirmationTemplate(
+        appointment.patient_phone,
+        params,
+        language
+      );
 
-      return {
-        success: true,
-        messageSid: response.data.SMSMessage?.Sid,
-        status: response.data.SMSMessage?.Status
-      };
+      console.log(`✓ Confirmation sent to ${appointment.patient_phone}`);
+      return { success: true };
     } catch (error) {
-      console.error('Exotel SMS error:', error.response?.data || error.message);
-      return {
-        success: false,
-        error: error.message
-      };
+      console.error('Error sending confirmation:', error);
+      return { success: false, error: error.message };
     }
   }
 
   /**
-   * Send appointment confirmation
+   * Send appointment reminder via WhatsApp
    */
-  async sendAppointmentConfirmation(appointment, language = 'en-IN') {
-    const message = this._buildConfirmationMessage(appointment, language);
-    return await this.sendSMS(appointment.patient_phone, message);
-  }
+  async sendAppointmentReminder(appointment, clinic, language = 'en') {
+    try {
+      const message = language === 'kn'
+        ? `ನಮಸ್ತೆ ${appointment.patient_name},\n\nನಿಮ್ಮ ಅಪಾಯಿಂಟ್ಮೆಂಟ್ ನಾಳೆ ${appointment.appointment_time} ಗೆ ಇದೆ.\n\nಧನ್ಯವಾದಗಳು!`
+        : `Hello ${appointment.patient_name},\n\nReminder: Your appointment is tomorrow at ${appointment.appointment_time}.\n\nThank you!`;
 
-  /**
-   * Send appointment reminder
-   */
-  async sendAppointmentReminder(appointment, language = 'en-IN') {
-    const message = this._buildReminderMessage(appointment, language);
-    return await this.sendSMS(appointment.patient_phone, message);
-  }
+      await whatsappService.sendTextMessage(
+        appointment.patient_phone,
+        message
+      );
 
-  /**
-   * Send cancellation confirmation
-   */
-  async sendCancellationConfirmation(appointment, language = 'en-IN') {
-    const message = this._buildCancellationMessage(appointment, language);
-    return await this.sendSMS(appointment.patient_phone, message);
-  }
-
-  // Build message templates
-  _buildConfirmationMessage(appointment, language) {
-    if (language === 'kn-IN') {
-      return `ನಮಸ್ಕಾರ ${appointment.patient_name},\n\nನಿಮ್ಮ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ನಿಶ್ಚಿತವಾಗಿದೆ:\nದಿನಾಂಕ: ${appointment.appointment_date}\nಸಮಯ: ${appointment.appointment_time}\n\nಧನ್ಯವಾದಗಳು!`;
-    } else {
-      return `Dear ${appointment.patient_name},\n\nYour appointment is confirmed:\nDate: ${appointment.appointment_date}\nTime: ${appointment.appointment_time}\n\nThank you!`;
+      console.log(`✓ Reminder sent to ${appointment.patient_phone}`);
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending reminder:', error);
+      return { success: false, error: error.message };
     }
   }
 
-  _buildReminderMessage(appointment, language) {
-    if (language === 'kn-IN') {
-      return `ರಿಮೈಂಡರ್: ${appointment.patient_name}, ನಿಮ್ಮ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ನಾಳೆ ${appointment.appointment_date} ರ ${appointment.appointment_time} ಕ್ಕೆ ಇದೆ.`;
-    } else {
-      return `Reminder: ${appointment.patient_name}, your appointment is tomorrow ${appointment.appointment_date} at ${appointment.appointment_time}.`;
-    }
-  }
+  /**
+   * Send cancellation confirmation via WhatsApp
+   */
+  async sendCancellationConfirmation(appointment, language = 'en') {
+    try {
+      const message = language === 'kn'
+        ? `${appointment.patient_name}, ನಿಮ್ಮ ಅಪಾಯಿಂಟ್ಮೆಂಟ್ ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ.`
+        : `${appointment.patient_name}, your appointment has been cancelled.`;
 
-  _buildCancellationMessage(appointment, language) {
-    if (language === 'kn-IN') {
-      return `${appointment.patient_name}, ನಿಮ್ಮ ${appointment.appointment_date} ರ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ರದ್ದುಗೊಂಡಿದೆ.`;
-    } else {
-      return `${appointment.patient_name}, your appointment on ${appointment.appointment_date} has been cancelled.`;
+      await whatsappService.sendTextMessage(
+        appointment.patient_phone,
+        message
+      );
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error sending cancellation:', error);
+      return { success: false, error: error.message };
     }
   }
 }

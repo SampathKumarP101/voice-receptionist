@@ -11,10 +11,8 @@ const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
 // Import routes
-const voiceRoutes = require('./routes/voice');
-const appointmentRoutes = require('./routes/appointments');
-const callLogRoutes = require('./routes/callLogs');
 const whatsappRoutes = require('./routes/whatsapp');
+const appointmentRoutes = require('./routes/appointments');
 
 // Import scheduler
 const reminderScheduler = require('./jobs/reminderScheduler');
@@ -62,22 +60,18 @@ app.get('/health', (req, res) => {
 
 // API Routes
 app.use('/api/whatsapp', whatsappRoutes);
-app.use('/api/voice', voiceRoutes);
 app.use('/api/appointments', appointmentRoutes);
-app.use('/api/call-logs', callLogRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
   res.json({
-    message: 'AI Voice Receptionist API',
-    version: '1.0.0',
+    message: 'AI WhatsApp Receptionist API',
+    version: '2.0.0',
     endpoints: {
-      voice: '/api/voice',
+      whatsapp: '/api/whatsapp/webhook',
       appointments: '/api/appointments',
-      callLogs: '/api/call-logs',
       health: '/health'
-    },
-    docs: process.env.BASE_URL + '/api/docs'
+    }
   });
 });
 
@@ -115,7 +109,6 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('\n📚 API Endpoints:');
   console.log(`  • WhatsApp Webhooks: /api/whatsapp/webhook`);
   console.log(`  • Appointments: /api/appointments`);
-  console.log(`  • Call Logs: /api/call-logs`);
   console.log(`  • Health Check: /health`);
   console.log('\n' + '='.repeat(50) + '\n');
 
