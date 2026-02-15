@@ -21,9 +21,12 @@ const reminderScheduler = require('./jobs/reminderScheduler');
 const app = express();
 const PORT = process.env.PORT || 8001;
 
+// Trust proxy - required for ngrok/localtunnel
+app.set('trust proxy', 1);
+
 // Middleware
 app.use(helmet({
-  contentSecurityPolicy: false // Allow Twilio webhooks
+  contentSecurityPolicy: false
 }));
 
 app.use(cors({
@@ -35,10 +38,14 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting
+// Rate limiting - exclude webhook endpoints
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  skip: (req) => {
+    // Skip rate limiting for WhatsApp webhook endpoints
+    return req.path.includes('/api/whatsapp/webhook');
+  }
 });
 
 app.use('/api/', limiter);
