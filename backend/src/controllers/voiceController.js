@@ -25,15 +25,19 @@ class VoiceCallController {
       
       console.log(`📞 Incoming call: ${CallSid} from ${From} to ${To}`);
 
+      // Normalize phone number (add + if missing)
+      const normalizedTo = To.startsWith('+') ? To : `+${To}`;
+      const normalizedFrom = From.startsWith('+') ? From : `+${From}`;
+
       // Find clinic by phone number
       const { data: clinic } = await supabase
         .from('clinics')
         .select('*')
-        .eq('phone', To)
+        .eq('phone', normalizedTo)
         .single();
 
       if (!clinic) {
-        console.error('Clinic not found for number:', To);
+        console.error('Clinic not found for number:', normalizedTo);
         const exoml = getExoMLResponse();
         exoml.say('Sorry, clinic not found. Goodbye.');
         exoml.hangup();
@@ -44,7 +48,7 @@ class VoiceCallController {
       callSessions.set(CallSid, {
         callSid: CallSid,
         clinicId: clinic.id,
-        fromNumber: From,
+        fromNumber: normalizedFrom,
         language: clinic.language_preference || 'kn-IN',
         step: 'greeting',
         transcript: [],
@@ -57,8 +61,8 @@ class VoiceCallController {
         .insert({
           clinic_id: clinic.id,
           call_sid: CallSid,
-          from_number: From,
-          to_number: To,
+          from_number: normalizedFrom,
+          to_number: normalizedTo,
           call_status: 'initiated',
           detected_language: clinic.language_preference
         });
