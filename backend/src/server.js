@@ -14,6 +14,7 @@ const rateLimit = require('express-rate-limit');
 const voiceRoutes = require('./routes/voice');
 const appointmentRoutes = require('./routes/appointments');
 const callLogRoutes = require('./routes/callLogs');
+const whatsappRoutes = require('./routes/whatsapp');
 
 // Import scheduler
 const reminderScheduler = require('./jobs/reminderScheduler');
@@ -52,14 +53,15 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV,
     services: {
       database: 'connected',
-      exotel: process.env.EXOTEL_ACCOUNT_SID ? 'configured' : 'not configured',
-      sarvam: process.env.SARVAM_API_KEY ? 'configured' : 'not configured',
+      whatsapp: process.env.WHATSAPP_PHONE_NUMBER_ID ? 'configured' : 'not configured',
+      exotel: process.env.EXOTEL_ACCOUNT_SID ? 'configured (deprecated)' : 'not configured',
       openai: process.env.OPENAI_API_KEY ? 'configured' : 'not configured'
     }
   });
 });
 
 // API Routes
+app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/voice', voiceRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/call-logs', callLogRoutes);
@@ -101,18 +103,17 @@ app.use((req, res) => {
 // Start server
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n' + '='.repeat(50));
-  console.log('🏥 AI Voice Receptionist Backend Server');
+  console.log('🏥 AI Receptionist Backend Server (WhatsApp + Voice)');
   console.log('='.repeat(50));
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📍 Base URL: ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
   console.log('\n🔧 Services Status:');
   console.log(`  • Supabase: ${process.env.SUPABASE_URL ? '✓ Connected' : '✗ Not configured'}`);
-  console.log(`  • Exotel: ${process.env.EXOTEL_ACCOUNT_SID ? '✓ Configured' : '⚠ Not configured'}`);
-  console.log(`  • Sarvam AI: ${process.env.SARVAM_API_KEY ? '✓ Configured' : '✗ Not configured'}`);
+  console.log(`  • WhatsApp: ${process.env.WHATSAPP_PHONE_NUMBER_ID ? '✓ Configured' : '⚠ Not configured'}`);
   console.log(`  • OpenAI: ${process.env.OPENAI_API_KEY ? '✓ Configured' : '✗ Not configured'}`);
   console.log('\n📚 API Endpoints:');
-  console.log(`  • Voice Webhooks: /api/voice`);
+  console.log(`  • WhatsApp Webhooks: /api/whatsapp/webhook`);
   console.log(`  • Appointments: /api/appointments`);
   console.log(`  • Call Logs: /api/call-logs`);
   console.log(`  • Health Check: /health`);
@@ -121,12 +122,11 @@ app.listen(PORT, '0.0.0.0', () => {
   // Start reminder scheduler
   reminderScheduler.start();
 
-  if (!process.env.EXOTEL_ACCOUNT_SID) {
-    console.log('⚠  WARNING: Exotel not configured. Voice features disabled.');
-    console.log('📝 To enable voice features:');
-    console.log('  1. Sign up at https://exotel.com');
-    console.log('  2. Add EXOTEL_ACCOUNT_SID, EXOTEL_API_KEY, EXOTEL_API_TOKEN to .env');
-    console.log('  3. Configure webhook URL in Exotel Dashboard\n');
+  if (!process.env.WHATSAPP_PHONE_NUMBER_ID) {
+    console.log('⚠  WARNING: WhatsApp not configured. Chat features disabled.');
+    console.log('📝 To enable WhatsApp:');
+    console.log('  1. Add WHATSAPP_PHONE_NUMBER_ID and WHATSAPP_ACCESS_TOKEN to .env');
+    console.log('  2. Configure webhook URL in Meta App Dashboard\n');
   }
 });
 
